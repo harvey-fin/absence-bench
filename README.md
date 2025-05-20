@@ -64,10 +64,10 @@ This project provides tools for processing poetry datasets, visualizing the proc
 
 ### 1. Processing Poetry Data
 
-The `process_poetry.py` script transforms a poetry dataset by creating versions of poems with randomly omitted lines.
+The `dataset_construction/process_poetry.py` script transforms a poetry dataset by creating versions of poems with randomly omitted lines.
 
 ```bash
-python process_poetry.py <input_file> [-o OUTPUT] [-p PROB] [-m MAX_LINES]
+python dataset_construction/process_poetry.py <input_file> [-o OUTPUT] [-p PROB] [-m MAX_LINES]
 ```
 
 Arguments:
@@ -97,7 +97,7 @@ Arguments:
 
 Example:
 ```bash
-python test_llms_poetry.py --poems_file data/poetry_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.json
+python test_llms_poetry.py --poems_file data/poetry_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.jsonl
 ```
 
 Note: You'll need to set up the appropriate API keys as environment variables:
@@ -110,7 +110,7 @@ Note: You'll need to set up the appropriate API keys as environment variables:
 ## Numerical Sequences
 ### Generate Numerical Sequences Data
 ```bash
-python generate_numeric.py
+python dataset_construction/generate_numeric.py
 ```
 
 ### Testing Language Models
@@ -131,7 +131,7 @@ Arguments:
 
 Example:
 ```bash
-python test_llms_poetry.py --poems_file data/poetry_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.json
+python tests/test_llms_numerical.py --poems_file data/numerical_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.jsonl
 ```
 
 ## Github Merged PRs 
