@@ -89,6 +89,7 @@ bash scripts/download_poetry.sh
 ```bash
 bash scripts/generate_data.sh
 ```
+Note that scraping the GitHub pull requests data may take a long time (around 20 minutes)
 
 ## Evaluation
 If you wish to evaluate a language model via API, we have provided frameworks for five API providers in `tests/llm_providers.py`. The following is an example script to run evaluations using `Claude-3.7-sonnet`:
@@ -125,7 +126,7 @@ We evaluate a total of 14 LLMs on AbsenceBench
 In the paper, we perform several analyses on AbsenceBench. This section provides further details regarding data generation and evaluation procedures used in these analyses.
 
 ### Needle-in-a-haystack (NIAH)
-We compare our evaluation setting to the NIAH test setting in the Poetry and GitHub PRs domains. To generate data for these two domains under the NIAH setting, run the data generation scripts under `dataset_construction` directory separately with the `--use_needles` argument enabled. Example usage that saves data to `data/poetry_needles.jsonl`
+We compare our evaluation setting to the NIAH test setting in the Poetry and GitHub PRs domains. To generate data for these two domains under the NIAH setting, run the data generation scripts under `dataset_construction` directory separately with the `--use_needles` argument enabled. In addition, you will need to add your own "needles" file to the directory. Example usage that saves data to `data/poetry_needles.jsonl`
 ```bash
 python dataset_construction/process_poetry.py \
     --input_file data/poetry_raw.jsonl \

@@ -15,5 +15,5 @@ def load_needles(file_name: str) -> List[str]:
     except FileNotFoundError:
         print(f"File {file_name} not found")
 
-    ret_list =  [f"{n} is a character in the Harry Potter novel series" for n in list(df["Name"])]
-    return ret_list
+    # Process your needles data here
+    pass
