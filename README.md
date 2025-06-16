@@ -1,5 +1,5 @@
 # AbsenceBench:  Language Models Can’t Tell What’s Missing
-This repository contains implementation details for our paper [AbsenceBench: Language models Can't Tell What's Missing](https://arxiv.org/abs/2506.11440). 
+This repository contains implementation details for our paper [AbsenceBench: Language Models Can't Tell What's Missing](https://arxiv.org/abs/2506.11440). 
 AbsenceBench is a new benchmark designed to evaluate the abilities of LLMs in locating conspicuously missing information from long inputs. Instead of asking LLMs to find off-topic information (the ‘needle’ in NIAH), LLMs are prompted to identify and recall intentionally omitted information.
 <p align="center">
   <img src="assets/intro.jpg" width="80%" height="80%">
