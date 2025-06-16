@@ -101,7 +101,7 @@ python evaluate.py \
     --batch_size 10 \                       # batch size
     --thinking                              # (optional) thinking mode
 ```
-Alternatively, to evaluate your own model, modify the `get_response` function in `tests/llm_providers.py` and specify "custom" as the model family in the above script.
+Alternatively, to evaluate your own model, modify the `get_response` function [here](https://github.com/harvey-fin/absence-bench/blob/82f8bbe1b30e0f8621536632f6cb0539f777aec8/tests/llm_providers.py#L40) and specify "custom" as the model family in the above script.
 
 ### Evaluate on Each Domain
 `evaluate.py` executes three distinct test scripts (one for each domain) located under `tests` directory. You can also pass `--tasks poetry` to the above script or directly run the specific test script
@@ -132,7 +132,7 @@ python dataset_construction/process_poetry.py \
     --prob 0.1 \
     --use_needles \
 ```
-Note for Github PRs domain, you will need to modify the [here](https://github.com/harvey-fin/absence-bench/blob/d347e0b7d2ae6111258af20ec62a976faf965329/dataset_construction/run_prs.py#L40) by enabling the `--use_needles` argument.
+Note for Github PRs domain, you will need to modify [here](https://github.com/harvey-fin/absence-bench/blob/d347e0b7d2ae6111258af20ec62a976faf965329/dataset_construction/run_prs.py#L40) by enabling the `--use_needles` argument.
 
 #### Evaluate NIAH
 Similar to the [evaluation scripts](#evaluate-on-each-domain), pass the `--use_needle` argument to evaluate AbsenceBench under the NIAH setting.
