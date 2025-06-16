@@ -132,7 +132,7 @@ python dataset_construction/process_poetry.py \
     --prob 0.1 \
     --use_needles \
 ```
-Note for Github PRs domain, you will need to modify the `process_pr_data` function in `dataset_construction/run_prs.py` by enabling the `--use_needles` argument.
+Note for Github PRs domain, you will need to modify the [here](https://github.com/harvey-fin/absence-bench/blob/d347e0b7d2ae6111258af20ec62a976faf965329/dataset_construction/run_prs.py#L40) by enabling the `--use_needles` argument.
 
 #### Evaluate NIAH
 Similar to the [evaluation scripts](#evaluate-on-each-domain), pass the `--use_needle` argument to evaluate AbsenceBench under the NIAH setting.
