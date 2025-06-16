@@ -104,12 +104,12 @@ python evaluate.py \
 Alternatively, to evaluate your own model, modify the `get_response` function [here](https://github.com/harvey-fin/absence-bench/blob/82f8bbe1b30e0f8621536632f6cb0539f777aec8/tests/llm_providers.py#L40) and specify "custom" as the model family in the above script.
 
 ### Evaluate on Each Domain
-`evaluate.py` executes three distinct test scripts (one for each domain) located under `tests` directory. You can also pass `--tasks poetry` to the above script or directly run the specific test script
+`evaluate.py` executes three distinct test scripts (one for each domain) located under `tests` directory. You can also pass `--run_task poetry` to the above script or directly run the specific test script
 ```bash
 python tests/test_llms_poetry.py \
     --input_file data/poetry.jsonl \        # path to the poetry data
     --provider_models openai:gpt-4 \        # model_family:model
-    --output results/poetry_gpt-4.jsonl \   # path to save the output
+    --output poetry_gpt-4.jsonl \   # path to save the output
     --batch_size 10 \                       # batch size
     --sample_size 5 \                       # (optional) run on several samples only
     --thinking \                            # (optional) thinking mode

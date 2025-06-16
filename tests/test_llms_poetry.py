@@ -22,6 +22,7 @@ import json
 import argparse
 import random
 import time
+import os
 import concurrent.futures
 from tqdm import tqdm
 from pathlib import Path
@@ -140,20 +141,20 @@ def process_poem(
     
     user_message = f"""Here is the complete original poem:
 
-{poem['original_poem']}
+{poem['original_context']}
 
 Now, here is my recitation which may be missing some lines:
 
-{poem['modified_poem']}
+{poem['modified_context']}
 
 What lines did I miss? Please list only the missing lines, nothing else."""
     if use_needle:
             user_message = f"""Here is the complete original poem:
-{poem['original_poem']}
+{poem['original_context']}
 
 Now, here is my recitation with some extra lines that is related to Harry Potter novel series:
 
-{poem['modified_poem']}
+{poem['modified_context']}
 
 What lines did I add to the poem? Please list only the extra lines, nothing else."""
     
@@ -165,7 +166,7 @@ What lines did I add to the poem? Please list only the extra lines, nothing else
         response = provider.get_response(system_prompt, user_message, model_name, thinking)
             
         evaluation = evaluate_response(response, poem, use_needle)
-        evaluation["poem_id"] = poem.get("id", poem_idx)
+        evaluation["id"] = poem.get("id", poem_idx)
         evaluation["model_response"] = response
         return evaluation
         
@@ -259,7 +260,7 @@ def main():
                       help='Provider and model pairs in the format "provider:model" '
                       '(e.g., "openai:gpt-4 anthropic:claude-3-opus")')
     parser.add_argument('--output', type=str,
-                      help='Path to save the test results (default: llm_poem_test_results.json)')
+                      help='Path to save the test results')
     parser.add_argument('--batch_size', type=int, default=5,
                       help='Number of API calls to batch together (default: 5)')
     parser.add_argument("--use_needle", action="store_true",

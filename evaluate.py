@@ -117,7 +117,7 @@ def main():
     parser.add_argument('--model_family', type=str, default='openai',
                       help='the provider of LLM '
                       '(openai/togetherai/xai/anthropic/google/custom)')
-    parser.add_argument('--model', type=str, nargs='+', default=['gpt-4.1-mini'],
+    parser.add_argument('--model', type=str, default='gpt-4.1-mini',
                       help='model to evaluate the tasks with')
     parser.add_argument('--out_dir', type=str, default='results',
                       help='Path to the output directory to store the results')
@@ -131,19 +131,18 @@ def main():
                       help="Active thinking mode")
     
     args = parser.parse_args()
-
+    os.makedirs(args.out_dir, exist_ok=True)
     
-    for model in args.models:
-        run_model(model_family=args.model_family,
-                    model=model,
-                    tasks=args.run_task,
-                    in_dir=args.in_dir,
-                    out_dir=args.out_dir,
-                    batch_size=args.batch_size,
-                    thinking=args.thinking)
+    run_model(model_family=args.model_family,
+                model=model,
+                tasks=args.run_task,
+                in_dir=args.in_dir,
+                out_dir=args.out_dir,
+                batch_size=args.batch_size,
+                thinking=args.thinking)
 
-    model = args.model_family + ":" + args.models
-    results = collect_result(models=model, out_dir=args.out_dir, thinking=args.thinking)
+    model = args.model_family + ":" + args.model
+    results = collect_result(model=model, out_dir=args.out_dir, thinking=args.thinking)
     show_outputs(results)
 
 if __name__ == "__main__":

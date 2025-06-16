@@ -127,7 +127,7 @@ What numbers did I miss? Please list only the missing numbers, nothing else.'''
         response = provider.get_response(system_prompt, user_message, model_name, thinking=thinking)
         
         evaluation = evaluate_response(response, artificial_task)
-        evaluation["task_id"] = artificial_task["id"]
+        evaluation["id"] = artificial_task["id"]
         evaluation["model_response"] = response
         return evaluation
     
@@ -211,8 +211,7 @@ def main():
                       help='Provider and model pairs in the format \"provider:model\" '
                       '(e.g., "openai:gpt-4 anthropic:claude-3-opus")')
     parser.add_argument('--output', type=str,
-                      help='Path to save the test results '
-                      '(default: results/llm_numerical_test_results.json)')
+                      help='Path to save the test results')
     parser.add_argument('--batch_size', type=int, default=5,
                       help='Number of API calls to batch together (default: 5)')
     parser.add_argument("--thinking", action='store_true',

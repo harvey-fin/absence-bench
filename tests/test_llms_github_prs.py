@@ -34,7 +34,7 @@ def load_diffs(jsonl_file: str, sample_size: int = None) -> List[Dict[str, Any]]
     """
     Load diff records from the JSONL file. Optionally sub-sample to a given number.
     Each record is expected to have keys like
-        "original_diff", "modified_diff", and "omitted_lines".
+        "original_context", "modified_context", and "omitted_context".
     """
     diffs = []
     with open(jsonl_file, "r", encoding="utf-8") as f:
@@ -151,11 +151,11 @@ def process_diff(
     # Construct the user prompt using the provided data.
     user_message = f"""Here is the complete original diff:
 
-{diff_record['original_diff']}
+{diff_record['original_context']}
 
 And here is the merge diff after the developer fixed the commit history:
 
-{diff_record['modified_diff']}
+{diff_record['modified_context']}
 
 What changed lines (insertions or deletions) present \
 in the original diff are missing in the merge diff (if any)?
@@ -163,12 +163,12 @@ List only the missing changed lines, nothing else."""
     
     if use_needle:
             user_message = f"""Here is the complete original diff:
-{diff_record['original_diff']}
+{diff_record['original_context']}
 
 And here is the merge diff after the developer fixed the commit history,\
 with some extra liens that is related to Harry Potter novel series
 
-{diff_record['modified_diff']}
+{diff_record['modified_context']}
 
 What lines did I add to the original diff? Please list on only the extra lines, nothing else."""
 
@@ -180,7 +180,7 @@ What lines did I add to the original diff? Please list on only the extra lines, 
         response = provider.get_response(system_prompt, user_message, model_name, thinking=thinking)
 
         evaluation = evaluate_response(response, diff_record, use_needle)
-        evaluation["diff_id"] = diff_record.get("pr_number", diff_idx)
+        evaluation["id"] = diff_record.get("pr_number", diff_idx)
         evaluation["model_response"] = response
         return evaluation
 
@@ -287,7 +287,7 @@ def main():
                         help=('Provider and model pairs in the format "provider:model"'
                             ' (e.g., "openai:gpt-4o anthropic:claude-3-opus")'))
     parser.add_argument("--output", type=str,
-                        help="Path to save the test results (default: llm_diff_test_results.json)")
+                        help="Path to save the test results")
     parser.add_argument("--batch_size", type=int, default=5,
                         help="Number of API calls to batch together (default: 5)")
     parser.add_argument("--thinking", action='store_true',
