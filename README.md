@@ -1,190 +1,158 @@
-# Project Setup Guide
+# AbsenceBench:  Language Models Can’t Tell What’s Missing
+This repository contains implementation details for our paper [AbsenceBench: Language models Can't Tell What's Missing](https://arxiv.org/abs/2506.11440). 
+AbsenceBench is a new benchmark designed to evaluate the abilities of LLMs in locating conspicuously missing information from long inputs. Instead of asking LLMs to find off-topic information (the ‘needle’ in NIAH), LLMs are prompted to identify and recall intentionally omitted information.
+<p align="center">
+  <img src="assets/intro.jpg" width="80%" height="80%">
+</p>
+This repo provide instructions on how to generate the AbsenceBench dataset and run the evaluation.
 
-This README provides instructions for setting up a Python virtual environment and installing project dependencies from the requirements.txt file.
+## Content
+- [Setup](#setup)
+- [Data](#data)
+    - [Data Download](#data-download)
+    - [Data Generation](#data-generation)
+- [Evaluation](#evaluation)
+- [Analysis](#analysis)
+- [Citation](#citation)
+- [Contact](#contact)
 
-## Prerequisites
 
+## Setup
+### Prerequisites
 - Python 3.6 or higher installed
 - pip (Python package installer)
 
-## Setting Up a Virtual Environment
+### 1. Setting Up a Virtual Environment
 
 ```bash
-# Create a virtual environment
 python3 -m venv venv
-
-# Activate the virtual environment
 source venv/bin/activate
 ```
-
 You'll know your virtual environment is active when you see `(venv)` at the beginning of your terminal prompt.
 
-## Installing Dependencies
-
+### 2. Installing Dependencies
 Once your virtual environment is activated, install the required packages:
-
 ```bash
 pip install -r requirements.txt
 ```
-
-## Deactivating the Virtual Environment
-
-When you're done working on the project, you can deactivate the virtual environment:
-
+We run all evaluation through API requests. If you would like to do so as well, you will need to install these corresponding packages.
 ```bash
-deactivate
+pip install openai              # Openai API (GPT-4, o3), xAI API (Grok)
+                                # OPENAI_API_KEY, XAI_API_KEY
+
+pip install anthropic           # Anthropic API (Claude)
+                                # ANTHROPIC_API_KEY
+
+pip install together            # TogetherAI API (Llama, Qwen, Deepseek, Mixtral)
+                                # TOGETHER_API_KEY
+
+pip install google-genai        # Google API (Gemini)
+                                # GEMINI_API_KEY
 ```
+Note: You'll need to set up the appropriate API keys as environment variables. Here are some [instructions](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety).
 
-## Troubleshooting
 
-### If setuptools is missing
+## Data
+AbsenceBench covers three distinct domains:
+- Poetry (realistic; 1191 instances)
+- Numerical sequences (synthetic; 1200 instances)
+- GitHub pull requests (realistic; 887 instances)
 
-If you encounter `NameError: name 'setuptools' is not defined`, install setuptools:
+There are 4302 instances in total, with an average context length of 5K tokens.
 
+### Data Download
+-----
+We host the dataset on this Huggingface [repo](https://huggingface.co/datasets/harveyfin/AbsenceBench).
+#### Download Data Directly
+You can directly download the data by running the script below. The script retrieves the default branch of the dataset, containing one `jsonl` file per domain, and stores it in the `data` directory. The dataset requires approximately 37.8 MB of storage.
 ```bash
-pip install setuptools
+bash scripts/download.sh
+```
+Note that it is recommended to choose this way of downloading data to perform the evaluations provided in this repository.
+
+#### Download Using 🤗 Datasets
+Alternatively, you can download data using 🤗 Datasets.
+```python
+from datasets import load_dataset
+dataset = load_dataset("harveyfin/AbsenceBench", "poetry")
 ```
 
-### Updating pip
-
-It's a good practice to ensure pip is up to date in your virtual environment:
-
+### Data Generation
+-----
+We provide python scripts as well as unprocessed data for generating the full dataset.
+#### 1. Download Raw Poetry Data
 ```bash
-pip install --upgrade pip
+bash scripts/download_poetry.sh
 ```
 
-### Requirements.txt not found
-
-Make sure you're in the project's root directory where the requirements.txt file is located.
-
-## Poetry Usage
-
-This project provides tools for processing poetry datasets, visualizing the processed poems, and testing LLMs on their ability to identify missing lines.
-
-
-### 1. Processing Poetry Data
-
-The `dataset_construction/process_poetry.py` script transforms a poetry dataset by creating versions of poems with randomly omitted lines.
-
+#### 2. Run Data Construction
 ```bash
-python dataset_construction/process_poetry.py <input_file> [-o OUTPUT] [-p PROB] [-m MAX_LINES]
+bash scripts/generate_data.sh
 ```
 
-Arguments:
-- `--input_file`: Path to the input poetry.jsonl file
-- `-o, --output`: Path to the output file (default: poetry_processed.jsonl)
-- `-p, --prob`: Probability of omitting a line (default: 0.1)
-- `-m, --max_lines`: Maximum number of lines to include from each poem (optional)
-- `--use_needles`: Whether to insert needles (True) or omit lines (False) (default: False)
-- `--use_placeholders`: Whether to use placeholders to mark the omissions
-
-### 2. Testing Language Models
-
-The `tests/test_llms_poetry.py` script evaluates LLMs on their ability to identify omitted lines from poems.
-
+## Evaluation
+If you wish to evaluate a language model via API, we have provided frameworks for five API providers in `tests/llm_providers.py`. The following is an example script to run evaluations using `Claude-3.7-sonnet`:
 ```bash
-python test_llms_poetry.py [--poems_file POEMS_FILE] [--sample_size SAMPLE_SIZE] [--provider_models {model_provider}:{model}] [--output OUTPUT] [--batch_size BATCH_SIZE]
+python evaluate.py \
+    --model_family anthropic \              # model family (e.g., openai, anthropic)
+    --model claude-3.7-sonnet-latest \      # model API reference
+    --in_dir tests\                         # directory of evaluation scripts
+    --out_dir results\                      # directory of outputs
+    --batch_size 10 \                       # batch size
+    --thinking                              # (optional) thinking mode
 ```
+Alternatively, to evaluate your own model, modify the `get_response` function in `tests/llm_providers.py` and specify "custom" as the model family in the above script.
 
-Arguments:
-- `--poems_file`: Path to the processed poems JSONL file (default: data/processed_poems.jsonl)
-- `--sample_size`: Number of poems to sample for testing (default: use all)
-- `--provider_models`: model family and specific model to test (example: openai:gpt-4o)
-- `--output`: Path to save the test results (default: llm_poem_test_results.json)
-- `--batch_size`: Number of API calls to batch together (default: 5)
-- `--thinking`: Whether to use the thinking mode for inference-time compute models (default: False)
-- `--check_omitted`: Check whether all instances are evaluted (some might not due to API side errors)
-
-Example:
+### Evaluate on Each Domain
+`evaluate.py` executes three distinct test scripts (one for each domain) located under `tests` directory. You can also pass `--tasks poetry` to the above script or directly run the specific test script
 ```bash
-python test_llms_poetry.py --poems_file data/poetry_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.jsonl
+python tests/test_llms_poetry.py \
+    --input_file data/poetry.jsonl \        # path to the poetry data
+    --provider_models openai:gpt-4 \        # model_family:model
+    --output results/poetry_gpt-4.jsonl \   # path to save the output
+    --batch_size 10 \                       # batch size
+    --sample_size 5 \                       # (optional) run on several samples only
+    --thinking \                            # (optional) thinking mode
 ```
 
-Note: You'll need to set up the appropriate API keys as environment variables:
-- For OpenAI: Set the OPENAI_API_KEY environment variable
-- For TogetherAI: Set the TOGETHER_API_KEY environment variable
-- For Google: Set the GEMINI_API_KEY environment variable
-- For XAI: Set the XAI_API_KEY environment variable
-- For Anthropic: Set the ANTHROPIC_API_KEY environment variable 
+### Evaluation Results
+We evaluate a total of 14 LLMs on AbsenceBench
+<p align="center">
+  <img src="assets/result_table.png" width="80%" height="80%">
+</p>
 
-## Numerical Sequences
-### Generate Numerical Sequences Data
+## Analysis
+In the paper, we perform several analyses on AbsenceBench. This section provides further details regarding data generation and evaluation procedures used in these analyses.
+
+### Needle-in-a-haystack (NIAH)
+We compare our evaluation setting to the NIAH test setting in the Poetry and GitHub PRs domains. To generate data for these two domains under the NIAH setting, run the data generation scripts under `dataset_construction` directory separately with the `--use_needles` argument enabled. Example usage that saves data to `data/poetry_needles.jsonl`
 ```bash
-python dataset_construction/generate_numeric.py
+python dataset_construction/process_poetry.py \
+    --input_file data/poetry_raw.jsonl \
+    --prob 0.1 \
+    --use_needles \
+```
+Note for Github PRs domain, you will need to modify the `process_pr_data` function in `dataset_construction/run_prs.py` by enabling the `--use_needles` argument.
+
+#### Evaluate NIAH
+Similar to the [evaluation scripts](#evaluate-on-each-domain), pass the `--use_needle` argument to evaluate AbsenceBench under the NIAH setting.
+
+### Placeholders
+We analyze the effect of placeholders as an identifier to help language models detect omissions. To generate data with placeholders in place, enable the `--use_placeholders` argument.
+ 
+## Citation
+If you find this work useful, please cite our paper:
+```
+@misc{fu2025absencebenchlanguagemodelscant,
+      title={AbsenceBench: Language Models Can't Tell What's Missing}, 
+      author={Harvey Yiyun Fu and Aryan Shrivastava and Jared Moore and Peter West and Chenhao Tan and Ari Holtzman},
+      year={2025},
+      eprint={2506.11440},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2506.11440}, 
+}
 ```
 
-### Testing Language Models
-The `tests/test_llms_numerical.py` script evaluates LLMs on their ability to identify omitted lines from numerical sequences.
-
-```bash
-python tests/test_llms_numerical.py [--tasks_file SEQUENCE_FILE] [--sample_size SAMPLE_SIZE] [--provider_models {model_provider}:{model}] [--output OUTPUT] [--batch_size BATCH_SIZE]
-```
-
-Arguments:
-- `--sequence_file`: Path to the processed numerical sequences JSONL file (default: data/numerical_default.jsonl)
-- `--sample_size`: Number of numerical sequences to sample for testing (default: use all)
-- `--provider_models`: model family and specific model to test (example: openai:gpt-4o)
-- `--output`: Path to save the test results (default: llm_poem_test_results.json)
-- `--batch_size`: Number of API calls to batch together (default: 5)
-- `--thinking`: Whether to use the thinking mode for inference-time compute models (default: False)
-- `--check_omitted`: Check whether all instances are evaluted (some might not due to API side errors)
-
-Example:
-```bash
-python tests/test_llms_numerical.py --poems_file data/numerical_default.jsonl --sample_size 20 --provider_models openai:o1-2024-12-17 --output results.jsonl
-```
-
-## Github Merged PRs 
-
-1. Download diffs of closed pull requests from a popular github repo 
-```
-$ python dataset_construction/github_merged_prs.py nodejs/node                     
-Processing repository nodejs/node
-Only PRs merged after 2024-04-12T22:32:02.174295+00:00 and with line changes in [10, 100] will be kept
-Looking for up to 10 merges.
-Processing PR #57667 (merged at 2025-04-12T18:27:10Z)
-PR #57667 - +0 / -9 (total 9 changes)
-    Does not meet line change criteria. Skipping.
-[...]
-Processing PR #57790 (merged at 2025-04-10T22:37:31Z)
-PR #57790 - +16 / -30 (total 46 changes)
-
-Collected 10 merged PRs. Saving output.
-Output saved to data/merges/nodejs__node-2025-04-12-merged-prs.jsonl
-```
-
-2. Randomly delete a few lines from each diff.
-*(There's also a condition to delete non-changed lines which should be ignored as 
-per the models prompt---they don't change the resulting commit---but
-`tests/test_llms_github_prs.py` doesn't take off points yet for this.)*
-```
-$ python process_github_prs.py data/merges/nodejs__node-2025-04-12-merged-prs.jsonl
-Processing complete. Output saved to github_prs_processed.jsonl
-```
-
-3. Test how well LLMs can manage to notice the changes.
-```
-$ python tests/test_llms_github_prs.py --diffs_file github_prs_default.jsonl
-Loaded 10 diff records for testing.
-
-Testing provider: openai, model: gpt-4o
-Processing batch 1 (1-5 of 10)
-Testing openai/gpt-4o - Diff 1/10
-Testing openai/gpt-4o - Diff 2/10
-Testing openai/gpt-4o - Diff 3/10
-Testing openai/gpt-4o - Diff 4/10
-Testing openai/gpt-4o - Diff 5/10
-Waiting a moment before the next batch...
-Processing batch 2 (6-10 of 10)
-Testing openai/gpt-4o - Diff 6/10
-Testing openai/gpt-4o - Diff 7/10
-Testing openai/gpt-4o - Diff 8/10
-Testing openai/gpt-4o - Diff 9/10
-Testing openai/gpt-4o - Diff 10/10
-openai (gpt-4o): 40.33% average accuracy
-
-Results saved to llm_diff_test_results.json
-
-Summary:
-openai (gpt-4o): 40.33% average accuracy
-```
+## Contact
+If you have any questions regarding this repo, or questions that is relevant to AbsenceBench, please email me at `harveyfu@uchicago.edu`.

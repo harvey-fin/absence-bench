@@ -20,15 +20,18 @@ Usage:
 import argparse
 import json
 import random
+from typing import List
 from pathlib import Path
+from utils import write_data, load_needles
+from tqdm import tqdm
 
 # Define the header prefixes that should never be removed
 HEADER_PREFIXES = ("+++", "---", "diff --git", "index ", "@@")
 
 
-def should_delete_line(
-    line, is_changed_line, allow_context_deletion, prob_changed, prob_context
-):
+def should_delete_line(line: str, is_changed_line: bool, 
+                       allow_context_deletion: bool, prob_changed: float,
+                       prob_context: float):
     """
     Decide whether to delete a line based on the following:
 
@@ -42,6 +45,13 @@ def should_delete_line(
       - For non-header context lines
         (which do not start with '+' or '-' and are not headers),
         the deletion probability is prob_context.
+    
+    Inputs:
+        line: one line of diff in a PR record
+        is_changed_line: whether the line is a changed line
+        allow_context_deletion: use default/context deletion mode
+        prob_changed: probability that a changed line is omitted
+        prob_context: probability that a non-changed line is omitted
 
     Returns a tuple (delete_line, track_deletion) where:
       - delete_line: Boolean indicating whether the line should be removed.
@@ -71,9 +81,9 @@ def should_delete_line(
     return (False, False)
 
 
-def process_diff_text(
-    original_diff, allow_context_deletion, prob_changed, prob_context
-):
+def process_diff_text(original_diff: str, allow_context_deletion: bool, 
+                      prob_changed: float, prob_context: float, 
+                      needles: List[str], placeholder: str):
     """
     Process the diff text line by line, randomly deleting lines as specified.
 
@@ -85,14 +95,26 @@ def process_diff_text(
     In context deletion mode:
       Any non-header line is eligible for deletion, but only omitted changed lines
       (insertions/deletions) are recorded.
+    
+    Inputs:
+        original_diff: the complete diff of a PR record
+        allow_context_deletion: use default/context deletion mode
+        prob_changed: probability that a changed line is omitted
+        prob_context: probability that a non-changed line is omitted
+        needles: a list of needles that are inserted into omitted indices
+        placeholder: string to indicate omissions
 
-    Returns the modified diff text and a list of omitted changed lines.
+    Returns the modified diff text, a list of omitted changed lines,
+            and a list of used_needles [optional]
     """
     modified_lines = []
     # Will hold the exact text of omitted lines that are changed lines.
     omitted_changed_lines = []
     omitted_line_idx = []
 
+    # Keep track of needles that are inserted into the modified context if any
+    used_needles = []
+        
     # Split the diff into individual lines.
     diff_lines = original_diff.splitlines()
     unique_lines = [l for l in diff_lines if diff_lines.count(l) == 1]
@@ -104,54 +126,93 @@ def process_diff_text(
         # this is handled in should_delete_line via header check.
         is_changed_line = line.startswith("+") or line.startswith("-")
 
-        # if the line has a duplication, then we skip it
+        # If the line has a duplication, then we skip it
         if line not in unique_lines:
             continue
 
         # Decide whether to delete this line.
         delete_line, track = should_delete_line(
-            line, is_changed_line, allow_context_deletion, prob_changed, prob_context
+            line, 
+            is_changed_line, 
+            allow_context_deletion, 
+            prob_changed, 
+            prob_context
         )
+
+        # keep track of used needles if any
 
         if delete_line:
             # In the default mode, only changed lines are deleted and tracked.
             if track:
                 omitted_changed_lines.append(line)
                 omitted_line_idx.append(line_idx)
-            # Do not add the line to modified_lines.
+
+            # In the NIAH test setting, add the needle to the modified lines
+            if needles:
+                remain_needles = [n for n in needles if n not in used_needles]
+                if remain_needles:
+                    needle = random.choice(remain_needles)
+                    modified_lines.append(needle)
+                    used_needles.append(needle)
+            # If using placeholders, then add the placeholder instead
+            elif placeholder:
+                modified_lines.append(placeholder)
         else:
             modified_lines.append(line)
 
     # Reconstruct the modified diff.
     modified_diff = "\n".join(modified_lines)
-    return modified_diff, omitted_changed_lines, omitted_line_idx
+    return modified_diff, omitted_changed_lines, omitted_line_idx, used_needles
 
 
-def process_github_prs_file(
-    input_file, output_file, allow_context_deletion, prob_changed, prob_context
-):
+def process_github_prs_file(input_file: str, allow_context_deletion: bool, 
+                            prob_changed: float, prob_context: float, 
+                            use_needle: bool, use_placeholders: bool):
     """
     Process a GitHub merged PRs JSON-lines file. For each record (called here an "issue"),
     randomly delete some lines from the 'diff' field.
 
     For each issue, store:
-      - original_diff: the full diff from the input record.
-      - modified_diff: the diff after randomly deleting lines.
-      - omitted_lines: a list of the exact text of each deleted changed line.
+      - original_context: the full diff from the input record.
+      - modified_context: the diff after randomly deleting lines.
+      - omitted_context: a list of the exact text of each deleted changed line.
         In the context deletion mode, any deleted context lines are not tracked.
       - Also, include metadata: deletion_mode ("changed_only" or "context_allowed")
         and the probabilities used.
+
+    Note:
+        use_needle: whether to test with the NIAH setting
+                     replace PATH_TO_NEEDLES_FILE with the path to needles file
+        use_placeholders: whether to indicate omission with placeholders
+                          default placeholder: <missing line>
 
     Other fields are copied from the original record, but the poem-related key is now
     replaced by diff-related keys.
     """
     input_path = Path(input_file)
-    output_path = Path(output_file)
 
-    with open(input_path, "r", encoding="utf-8") as f_in, open(
-        output_path, "a", encoding="utf-8"
-    ) as f_out:
-        for line_num, line in enumerate(f_in):
+    # If testing NIAH setting, load needles from file
+    if use_needle:
+        print(f"Testing the NIAH setting under GitHub PRs domain")
+        needles_file = "PATH_TO_NEEDLES_FILE"
+        assert needles_file != "PATH_TO_NEEDLES_FILE",\
+            "Need to specify the path to needles file!"
+
+        needles = load_needles(needles_file)
+    else:
+        needles = None
+
+    # If using placeholders, specify the placeholder here
+    if use_placeholders:
+        print(f"Testing placeholder. Default: <missing lines>")
+        placeholder = "<missing line>"
+    else:
+        placeholder = None
+
+    print("===== Processing GitHub PRs Data =====")
+    
+    with open(input_path, "r", encoding="utf-8") as f_in:
+        for line_num, line in tqdm(enumerate(f_in)):
             try:
                 record = json.loads(line)
 
@@ -163,49 +224,53 @@ def process_github_prs_file(
                     continue
 
                 original_diff = record["diff"]
-                prob_changed = random.uniform(0.05, 0.5)
-                prob_context = prob_changed
-                allow_context_deletion = True
-                modified_diff, omitted_lines, omitted_idx = process_diff_text(
-                    original_diff, allow_context_deletion, prob_changed, prob_context
+
+                modified_diff, omitted_lines, omitted_idx, used_needles = process_diff_text(
+                    original_diff, 
+                    allow_context_deletion, 
+                    prob_changed, 
+                    prob_context,
+                    needles,
+                    placeholder
                 )
 
                 # Create the combined entry. We use "issue" terminology.
                 combined_entry = {
-                    "issue_id": record.get("pr_number", line_num),
-                    "original_diff": original_diff,
-                    "modified_diff": modified_diff,
-                    "omitted_lines": omitted_lines,
+                    "id": record.get('id', line_num),
+                    "original_context": original_diff,
+                    "modified_context": modified_diff,
+                    "omitted_context": omitted_lines,
                     "omitted_index": omitted_idx,
                     # Add metadata about how deletion was performed:
-                    "deletion_metadata": {
-                        "deletion_mode": (
-                            "context_allowed"
-                            if allow_context_deletion
-                            else "changed_only"
-                        ),
-                        "prob_changed": prob_changed,
-                        "prob_context": (
-                            prob_context if allow_context_deletion else None
-                        ),
+                    "metadata": {
+                        "pr_number": record.get("pr_number", line_num),
+                        "repo": record.get("repo", line_num),
+                        "title": record.get("title", line_num),
+                        "author": record.get("author", line_num),
+                        "additions": record.get("additions", line_num),
+                        "deletions": record.get("deletions", line_num),
+                        "total_changes": record.get("total_changes", line_num),
+                        "html_url": record.get("html_url", line_num),
+                        "omission_probability": prob_changed,
                     },
                 }
 
                 # Copy over other fields from the original record if needed
                 # (excluding the old 'diff').
-                for key, value in record.items():
-                    if key not in ["diff"]:
-                        combined_entry[key] = value
+                if use_needle:
+                    combined_entry["needles"] = used_needles
+                    write_data(f'data/github_prs_needles.jsonl', combined_entry)
+                elif use_placeholders:
+                    combined_entry["metadata"]["placeholder"] = placeholder
+                    write_data(f'data/github_prs_placeholder.jsonl', combined_entry)
+                else:
+                    write_data(f'data/github_prs.jsonl', combined_entry)
 
-                f_out.write(json.dumps(combined_entry) + "\n")
-
-                if (line_num + 1) % 1000 == 0:
-                    print(f"Processed {line_num + 1} issues...")
             except json.JSONDecodeError:
                 print(f"Warning: Line {line_num+1} - Invalid JSON. Skipping.")
                 continue
 
-    print(f"Processing complete. Output saved to {output_file}")
+    print(f"Processing complete. Output saved under data/")
 
 
 def main():
@@ -216,47 +281,33 @@ def main():
         description="Process a GitHub merged PRs JSONL file to produce modified diffs "
         "with random deletion of diff lines (issue version)."
     )
-    parser.add_argument(
-        "input_file", type=str, help="Path to the input GitHub merged PRs JSONL file"
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default="data/github_prs_processed.jsonl",
-        help="Path to the output file (default: github_prs_processed.jsonl)",
-    )
-    parser.add_argument(
-        "--allow-context-deletion",
-        action="store_true",
-        help=(
-            "Allow deletion of any non-header line (i.e. context lines included). "
-            "By default, only deletion/insertion lines are eligible."
-        ),
-    )
-    parser.add_argument(
-        "--prob-changed",
-        type=float,
-        default=0.1,
-        help="Probability of deleting a changed line (default: 0.1)",
-    )
-    parser.add_argument(
-        "--prob-context",
-        type=float,
-        default=0.05,
-        help=(
-            "Probability of deleting a context line"
-            " (only used if --allow-context-deletion is set; default: 0.05)"
-        ),
-    )
-
+    parser.add_argument("--input_file", type=str, 
+                        help="Path to the input GitHub merged PRs JSONL file")
+    parser.add_argument("--allow-context-deletion", action="store_true",
+                        help=("Allow deletion of any non-header line "
+                        "(i.e. context lines included). "
+                        "By default, only deletion/insertion lines are eligible."))
+    parser.add_argument("--prob-changed", type=float, default=0.1,
+                        help="Probability of deleting a changed line (default: 0.1)")
+    parser.add_argument("--prob-context", type=float, default=0,
+                        help=("Probability of deleting a context line"
+                        " (only used if --allow-context-deletion is set; default: 0)"))
+    parser.add_argument('--use_needle', action="store_true",
+                        help='experiment with needle in a haystack')
+    parser.add_argument('--use_placeholders', action="store_true",
+                        help='use placeholders to help identify omissions')
+    parser.add_argument('--random_seed', type=int, default=42,
+                        help="random seed")
     args = parser.parse_args()
 
+    random.seed(args.random_seed)
+
     input_file = args.input_file
-    output_file = args.output
     allow_context_deletion = args.allow_context_deletion
     prob_changed = args.prob_changed
     prob_context = args.prob_context
+    use_needle = args.use_needle
+    use_placeholders = args.use_placeholders
 
     # Check if input file exists.
     if not Path(input_file).exists():
@@ -264,7 +315,12 @@ def main():
         return
 
     process_github_prs_file(
-        input_file, output_file, allow_context_deletion, prob_changed, prob_context
+        input_file, 
+        allow_context_deletion, 
+        prob_changed, 
+        prob_context,
+        use_needle,
+        use_placeholders
     )
 
 

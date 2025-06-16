@@ -117,33 +117,16 @@ def main():
         description="Download closed & merged PRs with diff details"
         " from a GitHub repository."
     )
-    parser.add_argument(
-        "repository", type=str, help="Full name of the repository (e.g., owner/repo)"
-    )
-    parser.add_argument(
-        "--min-lines",
-        type=int,
-        default=10,
-        help=(
-            "Minimum total number of added+deleted lines for"
-            " a PR to be included (default: 0)"
-        ),
-    )
-    parser.add_argument(
-        "--max-lines",
-        type=int,
-        default=200,
-        help=(
-            "Maximum total number of added+deleted lines for"
-            " a PR to be included (default: 1000)"
-        ),
-    )
-    parser.add_argument(
-        "--quota",
-        type=int,
-        default=50,
-        help="Number of PR merges to save (default: 10)",
-    )
+    parser.add_argument("repository", type=str, 
+                        help="Full name of the repository (e.g., owner/repo)")
+    parser.add_argument( "--min-lines", type=int, default=10,
+                        help=("Minimum total number of added+deleted lines for a PR "
+                        "to be included (default: 0)"),)
+    parser.add_argument( "--max-lines", type=int, default=200,
+                        help=("Maximum total number of added+deleted lines for"
+                            " a PR to be included (default: 1000)"))
+    parser.add_argument("--quota", type=int, default=50,
+                        help="Number of PR merges to save (default: 10)")
 
     args = parser.parse_args()
 

@@ -1,11 +1,7 @@
 from abc import ABC, abstractmethod
 import os
-import openai
-import anthropic
-from google import genai
-from google.genai import types
-from together import Together
 from typing import Dict, Any, Optional, List
+
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers"""
@@ -24,13 +20,27 @@ class LLMProvider(ABC):
             'xai': XAIProvider,
             'anthropic': AnthropicProvider,
             'cohere': CohereProvider,
-            'google': GoogleProvider
+            'google': GoogleProvider,
+            'custom': CustomProvider
         }
         
         if provider_name not in providers:
             raise ValueError(f"Provider '{provider_name}' not supported. Available providers: {', '.join(providers.keys())}")
         
         return providers[provider_name]()
+    
+
+class CustomProvider(LLMProvider):
+    """User-specific implementation"""
+    
+    def __init__(self):
+        # IMPLEMENT YOUR OWN INIT FUNCTION
+        pass
+    
+    def get_response(self, system_prompt: str, user_message: str, model: str, thinking:bool=False) -> str:
+        # WRITE YOUR OWN get_response FUNCTION
+        pass
+
 
 
 class OpenAIProvider(LLMProvider):
@@ -41,6 +51,7 @@ class OpenAIProvider(LLMProvider):
         pass
     
     def get_response(self, system_prompt: str, user_message: str, model: str, thinking:bool=False) -> str:
+        import openai
         """Get a response from OpenAI model"""
         thinking_tokens = 0
         response = openai.chat.completions.create(
@@ -60,6 +71,7 @@ class XAIProvider(LLMProvider):
     """XAI implementation"""
 
     def __init__(self):
+        import openai
         # initialize the client. api key is accessed through the environment variable XAI_API_KEY
         self.client = openai.OpenAI(
             api_key=os.getenv("XAI_API_KEY"),
@@ -87,12 +99,12 @@ class TogetherAIProvider(LLMProvider):
     """TogetherAI-specific implementation"""
 
     def __init__(self):
+        from together import Together
         # API key is loaded from environment variable TOGETHER_API_KEY by the togetherai library
         self.client = Together()
 
     def get_response(self, system_prompt: str, user_message:str, model: str) -> str:
         """Get a response through TogetherAI api"""
-        # Query image with Llama 4 Maverick model
         response = self.client.chat.completions.create(
         model=model,
         messages=[
@@ -100,17 +112,30 @@ class TogetherAIProvider(LLMProvider):
             {"role": "user", "content": user_message},
         ],
         )
+        response_text = response.choices[0].message.content
+        if "</think>" in response_text:
+            final_response = response_text[response_text.index("</think>")+8:]
+        
+        import tiktoken
+        encoding = tiktoken.encoding_for_model("gpt-4")
+        thinking_tokens =  len(encoding.encode(
+            response_text[response_text.index("<think>")+7: response.index("</think>")],
+            disallowed_special=()
+        ))
 
-        return response.choices[0].message.content
+        return [final_response, thinking_tokens]
 
 
 class AnthropicProvider(LLMProvider):
     """Anthropic-specific implementation"""
     
     def __init__(self):
+        import anthropic
         self.client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
     
-    def get_response(self, system_prompt: str, user_message: str, model: str, thinking: bool=False) -> str:
+    def get_response(self, system_prompt: str, 
+                     user_message: str, model: str, 
+                     thinking: bool=False) -> str:
         """Get a response from Anthropic model"""
         if thinking: 
             response = self.client.messages.create(
@@ -151,14 +176,19 @@ class AnthropicProvider(LLMProvider):
 
         return [response_str, num_thinking]
     
+
 class GoogleProvider(LLMProvider):
     """Google-specific implementation"""
 
     def __init__(self):
+        from google import genai
         self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
     
-    def get_response(self, system_prompt: str, user_message: str, model: str, thinking: bool=False) -> str:
+    def get_response(self, system_prompt: str, user_message: str, 
+                     model: str, thinking: bool=False) -> str:
         """Get a response from Gemini"""
+        from google.genai import types
+
         if thinking:
             response = self.client.models.generate_content(
                 model=model,

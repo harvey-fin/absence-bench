@@ -1,0 +1,17 @@
+data/
+venv/
+**swp
+.env
+results/
+analysis_results/
+logs/
+plot.py
+results/
+*__pycache__*
+*.DS_Store*
+del.*
+slurm/
+plots/
+convert_results.py
+data_upload/
+data_alt/
