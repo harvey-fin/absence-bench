@@ -1,10 +1,10 @@
 # AbsenceBench:  Language Models Can’t Tell What’s Missing
-This repository contains implementation details for our paper [AbsenceBench: Language models Can't Tell What's Missing](https://arxiv.org/abs/2506.11440). 
+This repository contains implementation details for our paper [AbsenceBench: Language Models Can't Tell What's Missing](https://arxiv.org/abs/2506.11440). 
 AbsenceBench is a new benchmark designed to evaluate the abilities of LLMs in locating conspicuously missing information from long inputs. Instead of asking LLMs to find off-topic information (the ‘needle’ in NIAH), LLMs are prompted to identify and recall intentionally omitted information.
 <p align="center">
   <img src="assets/intro.jpg" width="80%" height="80%">
 </p>
-This repo provide instructions on how to generate the AbsenceBench dataset and run the evaluation.
+This repo provides instructions on how to generate the AbsenceBench dataset and run the evaluation.
 
 ## Content
 - [Setup](#setup)
@@ -79,7 +79,7 @@ dataset = load_dataset("harveyfin/AbsenceBench", "poetry")
 
 ### Data Generation
 -----
-We provide python scripts as well as unprocessed data for generating the full dataset.
+We provide python scripts as well as the source data for generating the full dataset.
 #### 1. Download Raw Poetry Data
 ```bash
 bash scripts/download_poetry.sh
@@ -139,7 +139,7 @@ Note for Github PRs domain, you will need to modify [here](https://github.com/ha
 Similar to the [evaluation scripts](#evaluate-on-each-domain), pass the `--use_needle` argument to evaluate AbsenceBench under the NIAH setting.
 
 ### Placeholders
-We analyze the effect of placeholders as an identifier to help language models detect omissions. To generate data with placeholders in place, enable the `--use_placeholders` argument.
+We analyze the effect of placeholders as an identifier to help language models detect omissions. To generate data with placeholders in place, enable the `--use_placeholders` argument. Evaluation is performed in the default AbsenceBench task setting.
  
 ## Citation
 If you find this work useful, please cite our paper:
