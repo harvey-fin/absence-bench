@@ -110,9 +110,8 @@ def evaluate_response(
                     results["fp"] += 1
                     results["wrongly_identified_lines"].append(line)
             elif clean_line and clean_line not in response.lower():
-                if idx in omitted_indices:
-                    results["fn"] += 1
-                    results["unidentified_lines"].append(line)
+                results["fn"] += 1
+                results["unidentified_lines"].append(line)
 
     # calculate micro_f1 score
     try:

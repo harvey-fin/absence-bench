@@ -98,9 +98,8 @@ def evaluate_response(response_list: List[Union[str, int]],
             # Clean up the line for comparison (remove punctuation, extra spaces, etc.)
             clean_line = line.strip().lower()
             if clean_line and clean_line in response.lower():
-                if idx not in omitted_indices:
-                    results["fp"] += 1
-                    results["wrongly_identified_lines"].append(line)
+                results["fp"] += 1
+                results["wrongly_identified_lines"].append(line)
     else:
         for idx, line in enumerate(original_lines):
             if line in repeat_lines:
